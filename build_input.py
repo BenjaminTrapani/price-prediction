@@ -1,5 +1,5 @@
-import security_technicals
 import numpy as np
+import targets
 
 # returns a flat 1D array of inputs
 def _fetch_raw_input(technicals):
@@ -17,37 +17,6 @@ def _fetch_raw_input(technicals):
             resultInput.append(emamap[movingAveragePeriod][closePriceIndex])
 
     return resultInput
-
-def _fetch_raw_output(num_steps, scale, technicals):
-    usefulClosePrices = technicals.getUsefulClosePrices()
-    result = np.zeros([num_steps * len(usefulClosePrices)], dtype=np.float32)
-
-    numPositiveBuckets = num_steps/2
-    curResultIndex = 0
-    for closePriceIndex in range(1, len(usefulClosePrices)):
-        lastClosePrice = usefulClosePrices[closePriceIndex-1]
-        curClosePrice = usefulClosePrices[closePriceIndex]
-        priceChange = curClosePrice - lastClosePrice
-        fracChange = priceChange / lastClosePrice
-        fracChangeInRange = fracChange * float(numPositiveBuckets)
-        adjustedFracChange = fracChangeInRange * scale
-
-        rawCenteredIndex = int(adjustedFracChange)
-        correctedIndex = rawCenteredIndex + numPositiveBuckets
-
-        if correctedIndex >= num_steps:
-            correctedIndex = num_steps-1
-        elif correctedIndex < 0:
-            correctedIndex = 0
-
-        chunk = np.zeros([num_steps], dtype=np.float32)
-        chunk[correctedIndex] = 1.0
-
-        for chunkVal in chunk:
-            result[curResultIndex] = chunkVal
-            curResultIndex = curResultIndex + 1
-
-    return result
 
 #returns two iterators: input, target
 def get_iterators(technicals, simulationParams):
@@ -76,14 +45,20 @@ def get_iterators(technicals, simulationParams):
 
     inputData = batchData(npInput)
 
-    targetArray = _fetch_raw_output(num_steps, simulationParams.priceChangeScale, technicals)
+    targetArray = targets.build_targets(num_steps, simulationParams.priceChangeScale, technicals)
     targetData = batchData(targetArray)
 
+    closePrices = technicals.getUsefulClosePrices()
     for i in range(epoch_size):
         xBeginIndex = i * num_steps
         xEndIndex = xBeginIndex + num_steps
         input = inputData[:, xBeginIndex:xEndIndex]
         target = targetData[:, xBeginIndex:xEndIndex]
-        print 'input = ' + str(input)
-        print 'target = ' + str(target)
+
+        for index in range(1, len(target)):
+            prevClosePrice = closePrices[index-1]
+            targets.pretty_print_targets(target[index], num_steps, prevClosePrice, simulationParams.priceChangeScale)
+
+
+        #print 'target = ' + str(target)
         yield (input, target)

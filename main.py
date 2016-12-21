@@ -43,6 +43,9 @@ def main(_):
             costs += cost
             iters += m.num_steps
 
+            output = m.output
+            print 'output: ' + str(output)
+
             print_interval = 20
             if verbose and epoch_size > print_interval \
                     and step % (epoch_size // print_interval) == print_interval:
