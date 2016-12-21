@@ -18,26 +18,34 @@ def _fetch_raw_input(technicals):
 
     return resultInput
 
-def _fetch_raw_output(batch_size, batch_len, technicals):
+def _fetch_raw_output(num_steps, scale, technicals):
     usefulClosePrices = technicals.getUsefulClosePrices()
-    result = np.zeros([batch_size, batch_len], dtype=np.float32)
+    result = np.zeros([num_steps * len(usefulClosePrices)], dtype=np.float32)
 
-    #range: -100% -- 100%, clamped on upper boundary
-    numPositiveBuckets = batch_len/2
+    numPositiveBuckets = num_steps/2
+    curResultIndex = 0
     for closePriceIndex in range(1, len(usefulClosePrices)):
         lastClosePrice = usefulClosePrices[closePriceIndex-1]
         curClosePrice = usefulClosePrices[closePriceIndex]
         priceChange = curClosePrice - lastClosePrice
         fracChange = priceChange / lastClosePrice
-        rawCenteredIndex = int(fracChange * numPositiveBuckets)
-        correctedIndex = rawCenteredIndex + numPositiveBuckets #implies batch_size should always be divisible by 2
+        fracChangeInRange = fracChange * float(numPositiveBuckets)
+        adjustedFracChange = fracChangeInRange * scale
 
-        if correctedIndex >= batch_len:
-            correctedIndex = batch_len-1
+        rawCenteredIndex = int(adjustedFracChange)
+        correctedIndex = rawCenteredIndex + numPositiveBuckets
 
-        curColum = np.zeros([batch_len], dtype=np.float32)
-        curColum[correctedIndex] = 1.0
-        result[correctedIndex] = curColum
+        if correctedIndex >= num_steps:
+            correctedIndex = num_steps-1
+        elif correctedIndex < 0:
+            correctedIndex = 0
+
+        chunk = np.zeros([num_steps], dtype=np.float32)
+        chunk[correctedIndex] = 1.0
+
+        for chunkVal in chunk:
+            result[curResultIndex] = chunkVal
+            curResultIndex = curResultIndex + 1
 
     return result
 
@@ -46,13 +54,13 @@ def get_iterators(technicals, simulationParams):
     rawInput = _fetch_raw_input(technicals)
 
     batch_size = simulationParams.batchSize
-    batch_size = batch_size * simulationParams.technicalsPerPrice
     num_steps = simulationParams.numSteps
 
     npInput = np.array(rawInput, dtype=np.float32)
     data_len = len(npInput)
     batch_len = data_len // batch_size
 
+    print "data_len = %d" % (data_len)
     print "batch size = %d" % (batch_size)
     print "batch_len = %d" % (batch_len)
     print "num_steps = %d" % (num_steps)
@@ -60,11 +68,16 @@ def get_iterators(technicals, simulationParams):
     if epoch_size == 0:
         raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
 
-    inputData = np.zeros([batch_size, batch_len], dtype=np.float32)
-    for i in range(batch_size):
-        inputData[i] = npInput[batch_len * i:batch_len * (i + 1)]
+    def batchData (rawData):
+        data = np.zeros([batch_size, batch_len], dtype=np.float32)
+        for i in range(batch_size):
+            data[i] = rawData[batch_len * i:batch_len * (i + 1)]
+        return data
 
-    targetData = _fetch_raw_output(batch_size, batch_len, technicals)
+    inputData = batchData(npInput)
+
+    targetArray = _fetch_raw_output(num_steps, simulationParams.priceChangeScale, technicals)
+    targetData = batchData(targetArray)
 
     for i in range(epoch_size):
         xBeginIndex = i * num_steps

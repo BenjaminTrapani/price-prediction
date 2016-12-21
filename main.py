@@ -12,8 +12,8 @@ def main(_):
     params = simulation_params.SimulationParams(startDate=beginDate, endDate=endDate,
                                                 securityTicker='SPY',
                                                 movingAveragePeriods=[20, 50, 100],
-                                                batchSize=15,
-                                                numSteps=5,
+                                                batchSize=64,
+                                                numSteps=8,
                                                 hiddenSize=650,
                                                 numLayers=100,
                                                 keepProb=0.5,
@@ -22,6 +22,7 @@ def main(_):
                                                 lrDecay=0.8,
                                                 learningRate=0.1,
                                                 initScale=0.04,
+                                                priceChangeScale=15,
                                                 numPredictionDays=200)
 
     technicals = security_technicals.Technicals(params)
@@ -61,6 +62,7 @@ def main(_):
 
         for epoch in xrange(params.numEpochs):
             lr_decay = params.lrDecay ** max(epoch - params.numEpochs, 0.0)
+            print 'lr_decay = ' + str(lr_decay)
             m.assign_lr(session, params.learningRate * lr_decay)
             cur_lr = session.run(m.lr)
 

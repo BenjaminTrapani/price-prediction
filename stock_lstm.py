@@ -3,7 +3,7 @@ import tensorflow as tf
 class StockLSTM(object):
 
     def __init__(self, is_training, simulationParams):
-        self.batch_size = batch_size = simulationParams.batchSize * simulationParams.technicalsPerPrice
+        self.batch_size = batch_size = simulationParams.batchSize
         self.num_steps = num_steps = simulationParams.numSteps
         size = simulationParams.hiddenSize
 
