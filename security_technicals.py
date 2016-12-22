@@ -31,7 +31,7 @@ class Technicals:
         return self.adjustedCloses
 
     def getUsefulClosePrices(self):
-        return self.adjustedCloses[:self.maxMovingAveragePeriod]
+        return self.adjustedCloses[:len(self.adjustedCloses) - self.maxMovingAveragePeriod]
 
     def getMovingAverages(self):
         resultSMAs = {}
