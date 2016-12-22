@@ -6,6 +6,8 @@ class StockLSTM(object):
     def __init__(self, is_training, simulationParams):
         self.batch_size = batch_size = simulationParams.batchSize
         self.num_steps = num_steps = simulationParams.numSteps
+        self.is_training = is_training
+
         size = simulationParams.hiddenSize
 
         self._input_data = tf.placeholder(tf.float32, [batch_size, num_steps])
@@ -27,12 +29,13 @@ class StockLSTM(object):
         outputs, states = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
         rnn_output = tf.reshape(tf.concat(1, outputs), [-1, size])
 
-        self._output = output = tf.nn.xw_plus_b(rnn_output,
+        output = tf.nn.xw_plus_b(rnn_output,
                                                 tf.get_variable("out_w", [size, 1]),
                                                 tf.get_variable("out_b", [1]))
 
+        self._output = tf.reshape(output, [batch_size, num_steps])
         self._cost = cost = tf.reduce_mean(tf.square(output - tf.reshape(self._targets, [-1])))
-        self._final_state = states[-1]
+        self._final_state = states
 
         if not is_training:
             return

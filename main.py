@@ -14,12 +14,12 @@ def main(_):
                                                 movingAveragePeriods=[20, 50, 100],
                                                 batchSize=64,
                                                 numSteps=8,
-                                                hiddenSize=650,
-                                                numLayers=100,
+                                                hiddenSize=1000,
+                                                numLayers=16,
                                                 keepProb=0.5,
-                                                maxGradNorm=5,
+                                                maxGradNorm=1024,
                                                 numEpochs=10,
-                                                lrDecay=0.8,
+                                                lrDecay=0.99,
                                                 learningRate=0.1,
                                                 initScale=0.04,
                                                 priceChangeScale=15,
@@ -28,49 +28,54 @@ def main(_):
     technicals = security_technicals.Technicals(params)
     technicals.loadDataInMemory()
 
-    def run_epoch(session, m, inputTechnicals, inputParams, eval_op, verbose=False):
+    def run_epoch(session, m, inputTechnicals, inputParams, eval_op, verbose=False, lastState=None):
         dataLen = len(inputTechnicals.getUsefulClosePrices()) * inputParams.technicalsPerPrice
         epoch_size = ((dataLen // m.batch_size) - 1) // m.num_steps
-        print(epoch_size)
+        print 'epoch_size = ' + str(epoch_size)
         start_time = time.time()
         costs = 0.0
         iters = 0
-        m._initial_state = tf.convert_to_tensor(m._initial_state)
-        state = m.initial_state.eval()
+        state = lastState
         for step, (x, y) in enumerate(build_input.get_iterators(inputTechnicals, inputParams)):
-            cost, state, _ = session.run([m.cost, m.final_state, eval_op],
-                             {m.input_data: x, m.targets: y, m.initial_state: state})
+            capturedParams = {m.input_data: x, m.targets: y}
+            if state is not None:
+                capturedParams[m.initial_state] = state
+
+            cost, state, targets, output, _ = session.run([m.cost, m.final_state, m.targets, m.output, eval_op], capturedParams)
             costs += cost
             iters += m.num_steps
 
-            output = m.output
-            print 'output: ' + str(output)
+            if verbose:
+                print 'output: ' + str(output)
+                print 'target: ' + str(targets)
 
             print_interval = 20
             if verbose and epoch_size > print_interval \
                     and step % (epoch_size // print_interval) == print_interval:
                 print("%.3f mse: %.8f speed: %.0f ips" % (step * 1.0 / epoch_size, costs / iters,
                      iters * m.batch_size / (time.time() - start_time)))
-        return costs / (iters if iters > 0 else 1)
+
+        return costs / (iters if iters > 0 else 1), state
 
 
     with tf.Graph().as_default(), tf.Session() as session:
         initializer = tf.random_uniform_initializer(-params.initScale, params.initScale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             m = stock_lstm.StockLSTM(is_training=True, simulationParams=params)
-        with tf.variable_scope("model", reuse=True, initializer=initializer):
-            mtest = stock_lstm.StockLSTM(is_training=False, simulationParams=params)
 
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
+        cachedStateBetweenEpochs = None
         for epoch in xrange(params.numEpochs):
-            lr_decay = params.lrDecay ** max(epoch - params.numEpochs, 0.0)
+            lr_decay = params.lrDecay ** epoch
             print 'lr_decay = ' + str(lr_decay)
             m.assign_lr(session, params.learningRate * lr_decay)
             cur_lr = session.run(m.lr)
 
-            mse = run_epoch(session, m, technicals, params, m.train_op, verbose=True)
-            vmse = run_epoch(session, mtest, technicals, params, tf.no_op())
+            mse, cachedStateBetweenEpochs = run_epoch(session, m, technicals, params, m.train_op, lastState=cachedStateBetweenEpochs)
+            m.is_training = False
+            vmse, _ = run_epoch(session, m, technicals, params, tf.no_op(), lastState=cachedStateBetweenEpochs)
+            m.is_training = True
             print("Epoch: %d - learning rate: %.3f - train mse: %.3f - test mse: %.3f" %
                   (epoch, cur_lr, mse, vmse))
 
@@ -81,8 +86,8 @@ def main(_):
 
         technicals = security_technicals.Technicals(params)
         technicals.loadDataInMemory()
-
-        tmse = run_epoch(session, mtest, technicals, params, tf.no_op())
+        m.is_training = False
+        tmse, _ = run_epoch(session, m, technicals, params, tf.no_op(), verbose=True, lastState=cachedStateBetweenEpochs)
         print("Test mse: %.3f" % tmse)
 
     return 0

@@ -23,7 +23,7 @@ def build_targets(num_steps, scale, technicals):
             correctedIndex = 0
 
         chunk = np.zeros([num_steps], dtype=np.float32)
-        chunk[correctedIndex] = 1.0
+        chunk[correctedIndex] = num_steps * num_steps * num_steps
 
         for chunkVal in chunk:
             result[curResultIndex] = chunkVal
