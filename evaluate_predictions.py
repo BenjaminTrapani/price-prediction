@@ -4,9 +4,9 @@ def shouldBuy(probabilities, buyThreshold):
     for index in range(len(probabilities)):
         curVal = probabilities[index]
         if index < len(probabilities) / 2:
-            leftWeight = leftWeight + curVal
+            leftWeight = leftWeight + (curVal)
         else:
-            rightWeight = rightWeight + curVal
+            rightWeight = rightWeight + (curVal)
 
     if leftWeight == 0:
         return rightWeight > 0

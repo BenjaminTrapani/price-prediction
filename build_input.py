@@ -62,6 +62,8 @@ def get_iterators(technicals, simulationParams):
 
     targetArray = targets.build_targets(num_steps, simulationParams.priceChangeScale, technicals)
     targetData = batchData(targetArray)
+    print 'targets: '
+    print targetArray
 
     for i in range(epoch_size):
         xBeginIndex = i * num_steps

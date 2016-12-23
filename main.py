@@ -11,16 +11,16 @@ def main(_):
     beginDate = '2009-04-25'
     endDate = '2015-02-27'
     params = simulation_params.SimulationParams(startDate=beginDate, endDate=endDate,
-                                                securityTicker='ADTN',
+                                                securityTicker='USO',
                                                 movingAveragePeriods=[20, 50, 100],
                                                 batchSize=64,
-                                                hiddenSize=10,
-                                                numLayers=4,
+                                                hiddenSize=100,
+                                                numLayers=2,
                                                 keepProb=0.7,
                                                 maxGradNorm=1024,
-                                                numEpochs=30,
-                                                lrDecay=0.99,
-                                                learningRate=0.1,
+                                                numEpochs=20,
+                                                lrDecay=0.999,
+                                                learningRate=0.09,
                                                 initScale=0.04,
                                                 priceChangeScale=15,
                                                 numPredictionDays=300)
@@ -36,7 +36,6 @@ def main(_):
         costs = 0.0
         iters = 0
         state = lastState
-        targets = None
         output = None
         for step, (x, y) in enumerate(build_input.get_iterators(inputTechnicals, inputParams)):
             capturedParams = {m.input_data: x, m.targets: y}
@@ -95,6 +94,10 @@ def main(_):
         initialValue = 1000
         finalValue = evaluate_predictions.fetch_final_value(initialValue, outputs, technicals.getUsefulClosePrices(), 1.0)
         print 'Final value of %f initial is %f' % (initialValue, finalValue)
+
+        usefulPrices = technicals.getUsefulClosePrices()
+        naiveFinalValue = (usefulPrices[-1] / usefulPrices[0]) * initialValue
+        print 'Naive final value is %f' % (naiveFinalValue)
 
     return 0
 
