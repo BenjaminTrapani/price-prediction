@@ -3,27 +3,28 @@ import simulation_params
 import security_technicals
 import stock_lstm
 import build_input
+import evaluate_predictions
 import time
 from datetime import datetime, timedelta
 
 def main(_):
     beginDate = '2009-04-25'
-    endDate = '2016-02-29'
+    endDate = '2015-02-27'
     params = simulation_params.SimulationParams(startDate=beginDate, endDate=endDate,
-                                                securityTicker='SPY',
+                                                securityTicker='ADTN',
                                                 movingAveragePeriods=[20, 50, 100],
                                                 batchSize=64,
-                                                numSteps=8,
-                                                hiddenSize=1000,
-                                                numLayers=16,
-                                                keepProb=0.5,
+                                                numSteps=16,
+                                                hiddenSize=10,
+                                                numLayers=4,
+                                                keepProb=0.7,
                                                 maxGradNorm=1024,
-                                                numEpochs=10,
+                                                numEpochs=150,
                                                 lrDecay=0.99,
                                                 learningRate=0.1,
                                                 initScale=0.04,
                                                 priceChangeScale=15,
-                                                numPredictionDays=200)
+                                                numPredictionDays=300)
 
     technicals = security_technicals.Technicals(params)
     technicals.loadDataInMemory()
@@ -36,6 +37,8 @@ def main(_):
         costs = 0.0
         iters = 0
         state = lastState
+        targets = None
+        output = None
         for step, (x, y) in enumerate(build_input.get_iterators(inputTechnicals, inputParams)):
             capturedParams = {m.input_data: x, m.targets: y}
             if state is not None:
@@ -55,7 +58,7 @@ def main(_):
                 print("%.3f mse: %.8f speed: %.0f ips" % (step * 1.0 / epoch_size, costs / iters,
                      iters * m.batch_size / (time.time() - start_time)))
 
-        return costs / (iters if iters > 0 else 1), state
+        return costs / (iters if iters > 0 else 1), state, output
 
 
     with tf.Graph().as_default(), tf.Session() as session:
@@ -72,9 +75,9 @@ def main(_):
             m.assign_lr(session, params.learningRate * lr_decay)
             cur_lr = session.run(m.lr)
 
-            mse, cachedStateBetweenEpochs = run_epoch(session, m, technicals, params, m.train_op, lastState=cachedStateBetweenEpochs)
+            mse, cachedStateBetweenEpochs, _ = run_epoch(session, m, technicals, params, m.train_op, lastState=cachedStateBetweenEpochs)
             m.is_training = False
-            vmse, _ = run_epoch(session, m, technicals, params, tf.no_op(), lastState=cachedStateBetweenEpochs)
+            vmse, _, _ = run_epoch(session, m, technicals, params, tf.no_op(), lastState=cachedStateBetweenEpochs)
             m.is_training = True
             print("Epoch: %d - learning rate: %.3f - train mse: %.3f - test mse: %.3f" %
                   (epoch, cur_lr, mse, vmse))
@@ -87,8 +90,12 @@ def main(_):
         technicals = security_technicals.Technicals(params)
         technicals.loadDataInMemory()
         m.is_training = False
-        tmse, _ = run_epoch(session, m, technicals, params, tf.no_op(), verbose=True, lastState=cachedStateBetweenEpochs)
+        tmse, _, outputs = run_epoch(session, m, technicals, params, tf.no_op(), verbose=False, lastState=cachedStateBetweenEpochs)
         print("Test mse: %.3f" % tmse)
+
+        initialValue = 1000
+        finalValue = evaluate_predictions.fetch_final_value(initialValue, outputs, technicals.getUsefulClosePrices(), 1.0)
+        print 'Final value of %f initial is %f' % (initialValue, finalValue)
 
     return 0
 
