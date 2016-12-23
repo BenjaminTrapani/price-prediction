@@ -2,10 +2,9 @@ import numpy as np
 
 def build_targets(num_steps, scale, technicals):
     usefulClosePrices = technicals.getUsefulClosePrices()
-    result = np.zeros([num_steps * len(usefulClosePrices)], dtype=np.float32)
+    result = []
 
     numPositiveBuckets = num_steps/2
-    curResultIndex = 0
     for closePriceIndex in range(1, len(usefulClosePrices)):
         lastClosePrice = usefulClosePrices[closePriceIndex-1]
         curClosePrice = usefulClosePrices[closePriceIndex]
@@ -26,17 +25,15 @@ def build_targets(num_steps, scale, technicals):
         chunk[correctedIndex] = num_steps * num_steps * num_steps
 
         for chunkVal in chunk:
-            result[curResultIndex] = chunkVal
-            curResultIndex = curResultIndex + 1
+            result.append(chunkVal)
 
     chunk = np.zeros([num_steps], dtype=np.float32)
     chunk[num_steps/2] = num_steps * num_steps * num_steps
 
     for chunkVal in chunk:
-        result[curResultIndex] = chunkVal
-        curResultIndex = curResultIndex + 1
+            result.append(chunkVal)
 
-    return result
+    return np.array(result, dtype=np.float32)
 
 def pretty_print_targets(targets, num_steps, prev_day_price, scale):
     arrayToPrint = np.zeros([2, num_steps], dtype=np.float32)

@@ -2,6 +2,17 @@ import numpy as np
 import targets
 
 # returns a flat 1D array of inputs
+
+def fetchPreviousPricesIfAvailable(usefulClosePrices, startIndex, prevToFetch):
+    result = []
+    for index in range(startIndex - prevToFetch, startIndex):
+        if prevToFetch < 0:
+            result.append(usefulClosePrices[0])
+        else:
+            result.append(usefulClosePrices[index])
+
+    return result
+
 def _fetch_raw_input(technicals):
     usefulClosePrices = technicals.getUsefulClosePrices()
     smamap, emamap = technicals.getMovingAverages()
@@ -12,6 +23,10 @@ def _fetch_raw_input(technicals):
     for closePriceIndex in range(len(usefulClosePrices)):
         resultInput.append(usefulClosePrices[closePriceIndex])
         resultInput.append(volumes[closePriceIndex])
+
+        prevCloses = fetchPreviousPricesIfAvailable(usefulClosePrices, closePriceIndex, 2)
+        resultInput += prevCloses
+
         for movingAveragePeriod in movingAveragePeriods:
             resultInput.append(smamap[movingAveragePeriod][closePriceIndex])
             resultInput.append(emamap[movingAveragePeriod][closePriceIndex])
@@ -23,7 +38,7 @@ def get_iterators(technicals, simulationParams):
     rawInput = _fetch_raw_input(technicals)
 
     batch_size = simulationParams.batchSize
-    num_steps = simulationParams.numSteps
+    num_steps = simulationParams.technicalsPerPrice
 
     npInput = np.array(rawInput, dtype=np.float32)
     data_len = len(npInput)
