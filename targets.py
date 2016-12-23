@@ -29,6 +29,13 @@ def build_targets(num_steps, scale, technicals):
             result[curResultIndex] = chunkVal
             curResultIndex = curResultIndex + 1
 
+    chunk = np.zeros([num_steps], dtype=np.float32)
+    chunk[num_steps/2] = num_steps * num_steps * num_steps
+
+    for chunkVal in chunk:
+        result[curResultIndex] = chunkVal
+        curResultIndex = curResultIndex + 1
+
     return result
 
 def pretty_print_targets(targets, num_steps, prev_day_price, scale):
