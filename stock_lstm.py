@@ -1,5 +1,4 @@
 import tensorflow as tf
-import targets
 
 class StockLSTM(object):
 
@@ -11,7 +10,7 @@ class StockLSTM(object):
         size = simulationParams.hiddenSize
 
         self._input_data = tf.placeholder(tf.float32, [batch_size, num_steps])
-        self._targets = tf.placeholder(tf.float32, [batch_size, num_steps])
+        self._targets = tf.placeholder(tf.int32, [batch_size])
 
         lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=0.0)
         if is_training and simulationParams.keepProb < 1:
@@ -27,14 +26,14 @@ class StockLSTM(object):
             inputs = [tf.nn.dropout(input_, simulationParams.keepProb) for input_ in inputs]
 
         outputs, states = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
-        rnn_output = tf.reshape(tf.concat(1, outputs), [-1, size])
+        rnn_output = tf.reshape(tf.concat(1, outputs), [batch_size, size * num_steps])
 
-        output = tf.nn.xw_plus_b(rnn_output,
-                                                tf.get_variable("out_w", [size, 1]),
-                                                tf.get_variable("out_b", [1]))
+        softmax_w = tf.get_variable("softmax_w", [size * num_steps, num_steps])
+        softmax_b = tf.get_variable("softmax_b", [num_steps])
+        logits = tf.matmul(rnn_output, softmax_w) + softmax_b
+        self._cost = cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, self._targets))
 
-        self._output = tf.reshape(output, [batch_size, num_steps])
-        self._cost = cost = tf.reduce_mean(tf.square(output - tf.reshape(self._targets, [-1])))
+        self._output = logits
         self._final_state = states
 
         if not is_training:

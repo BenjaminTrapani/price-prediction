@@ -16,7 +16,7 @@ def main(_):
                                                 batchSize=64,
                                                 hiddenSize=100,
                                                 numLayers=2,
-                                                keepProb=0.7,
+                                                keepProb=0.5,
                                                 maxGradNorm=1024,
                                                 numEpochs=20,
                                                 lrDecay=0.999,

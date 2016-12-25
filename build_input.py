@@ -53,22 +53,23 @@ def get_iterators(technicals, simulationParams):
         raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
 
     def batchData (rawData):
-        data = np.zeros([batch_size, batch_len], dtype=np.float32)
+        tempBatchLen = len(rawData) // batch_size
+        data = np.zeros([batch_size, tempBatchLen], dtype=np.float32)
         for i in range(batch_size):
-            data[i] = rawData[batch_len * i:batch_len * (i + 1)]
+            data[i] = rawData[tempBatchLen * i:tempBatchLen * (i + 1)]
         return data
 
     inputData = batchData(npInput)
 
     targetArray = targets.build_targets(num_steps, simulationParams.priceChangeScale, technicals)
-    targetData = batchData(targetArray)
+    batchedTargets = batchData(targetArray)
     print 'targets: '
-    print targetArray
+    print batchedTargets
 
     for i in range(epoch_size):
         xBeginIndex = i * num_steps
         xEndIndex = xBeginIndex + num_steps
         input = inputData[:, xBeginIndex:xEndIndex]
-        target = targetData[:, xBeginIndex:xEndIndex]
+        target = batchedTargets[:, i]
 
         yield (input, target)
