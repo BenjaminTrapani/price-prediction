@@ -1,18 +1,14 @@
 def shouldBuy(probabilities, buyThreshold):
-    leftWeight = 0
-    rightWeight = 0
-    for index in range(len(probabilities)):
-        curVal = probabilities[index]
-        if index < len(probabilities) / 2:
-            leftWeight = leftWeight + (curVal)
-        else:
-            rightWeight = rightWeight + (curVal)
+    totalIndices = 0.0
+    totalWeight = 0.0
 
-    if leftWeight == 0:
-        return rightWeight > 0
+    for step, prob in enumerate(probabilities):
+        if prob > 0:
+            totalIndices += prob * step
+            totalWeight += prob
 
-    weightFrac = rightWeight / leftWeight
-    return weightFrac > buyThreshold
+    averageIndex = totalIndices / totalWeight
+    return averageIndex > buyThreshold
 
 def fetch_final_value(initialCash, probabilities, prices, buyThreshold):
     lastDayPrice = prices[0]
@@ -30,3 +26,4 @@ def fetch_final_value(initialCash, probabilities, prices, buyThreshold):
 
 
     return initialCash
+

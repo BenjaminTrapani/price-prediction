@@ -5,24 +5,25 @@ import stock_lstm
 import build_input
 import evaluate_predictions
 import time
+import numpy as np
 from datetime import datetime, timedelta
 
 def main(_):
     beginDate = '2009-04-25'
     endDate = '2015-02-27'
     params = simulation_params.SimulationParams(startDate=beginDate, endDate=endDate,
-                                                securityTicker='USO',
+                                                securityTicker='SPY',
                                                 movingAveragePeriods=[20, 50, 100],
-                                                batchSize=64,
-                                                hiddenSize=100,
+                                                batchSize=16,
+                                                hiddenSize=300,
                                                 numLayers=2,
-                                                keepProb=0.5,
-                                                maxGradNorm=1024,
-                                                numEpochs=20,
-                                                lrDecay=0.999,
-                                                learningRate=0.09,
-                                                initScale=0.04,
-                                                priceChangeScale=15,
+                                                keepProb=1.0,
+                                                maxGradNorm=4096,
+                                                numEpochs=10,
+                                                lrDecay=0.9999,
+                                                learningRate=0.08,
+                                                initScale=0.5,
+                                                priceChangeScale=100,
                                                 numPredictionDays=300)
 
     technicals = security_technicals.Technicals(params)
@@ -30,23 +31,30 @@ def main(_):
 
     def run_epoch(session, m, inputTechnicals, inputParams, eval_op, verbose=False, lastState=None):
         dataLen = len(inputTechnicals.getUsefulClosePrices()) * inputParams.technicalsPerPrice
-        epoch_size = ((dataLen // m.batch_size) - 1) // m.num_steps
+        batch_len = ((dataLen // m.batch_size) - 1)
+        epoch_size = batch_len // m.num_steps
         print 'epoch_size = ' + str(epoch_size)
         start_time = time.time()
         costs = 0.0
         iters = 0
         state = lastState
-        output = None
+        concatenatedResults = None
         for step, (x, y) in enumerate(build_input.get_iterators(inputTechnicals, inputParams)):
             capturedParams = {m.input_data: x, m.targets: y}
             if state is not None:
                 capturedParams[m.initial_state] = state
 
-            cost, state, targets, output, _ = session.run([m.cost, m.final_state, m.targets, m.output, eval_op], capturedParams)
+            cost, state, targets, output, sparse_soft_max, _ = session.run([m.cost, m.final_state, m.targets, m.output, m._sparse_softmax_cross_entropy, eval_op], capturedParams)
             costs += cost
             iters += m.num_steps
 
+            if concatenatedResults is None:
+                concatenatedResults = output
+            else:
+                concatenatedResults = np.concatenate((concatenatedResults, output))
+
             if verbose:
+                #print 'cross entropy: ' + str(sparse_soft_max)
                 print 'output: ' + str(output)
                 print 'target: ' + str(targets)
 
@@ -56,7 +64,7 @@ def main(_):
                 print("%.3f mse: %.8f speed: %.0f ips" % (step * 1.0 / epoch_size, costs / iters,
                      iters * m.batch_size / (time.time() - start_time)))
 
-        return costs / (iters if iters > 0 else 1), state, output
+        return costs / (iters if iters > 0 else 1), state, concatenatedResults
 
 
     with tf.Graph().as_default(), tf.Session() as session:
@@ -73,7 +81,7 @@ def main(_):
             m.assign_lr(session, params.learningRate * lr_decay)
             cur_lr = session.run(m.lr)
 
-            mse, cachedStateBetweenEpochs, _ = run_epoch(session, m, technicals, params, m.train_op, lastState=cachedStateBetweenEpochs)
+            mse, cachedStateBetweenEpochs, _ = run_epoch(session, m, technicals, params, m.train_op, verbose=False, lastState=cachedStateBetweenEpochs)
             m.is_training = False
             vmse, _, _ = run_epoch(session, m, technicals, params, tf.no_op(), lastState=cachedStateBetweenEpochs)
             m.is_training = True
@@ -88,11 +96,11 @@ def main(_):
         technicals = security_technicals.Technicals(params)
         technicals.loadDataInMemory()
         m.is_training = False
-        tmse, _, outputs = run_epoch(session, m, technicals, params, tf.no_op(), verbose=False, lastState=cachedStateBetweenEpochs)
+        tmse, _, outputs = run_epoch(session, m, technicals, params, tf.no_op(), verbose=True, lastState=cachedStateBetweenEpochs)
         print("Test mse: %.3f" % tmse)
 
         initialValue = 1000
-        finalValue = evaluate_predictions.fetch_final_value(initialValue, outputs, technicals.getUsefulClosePrices(), 1.0)
+        finalValue = evaluate_predictions.fetch_final_value(initialValue, outputs, technicals.getUsefulClosePrices(), 5.0)
         print 'Final value of %f initial is %f' % (initialValue, finalValue)
 
         usefulPrices = technicals.getUsefulClosePrices()

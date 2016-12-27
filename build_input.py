@@ -24,7 +24,7 @@ def _fetch_raw_input(technicals):
         resultInput.append(usefulClosePrices[closePriceIndex])
         resultInput.append(volumes[closePriceIndex])
 
-        prevCloses = fetchPreviousPricesIfAvailable(usefulClosePrices, closePriceIndex, 2)
+        prevCloses = fetchPreviousPricesIfAvailable(usefulClosePrices, closePriceIndex, 3)
         resultInput += prevCloses
 
         for movingAveragePeriod in movingAveragePeriods:
@@ -63,8 +63,6 @@ def get_iterators(technicals, simulationParams):
 
     targetArray = targets.build_targets(num_steps, simulationParams.priceChangeScale, technicals)
     batchedTargets = batchData(targetArray)
-    print 'targets: '
-    print batchedTargets
 
     for i in range(epoch_size):
         xBeginIndex = i * num_steps

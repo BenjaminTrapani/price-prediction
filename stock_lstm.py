@@ -31,9 +31,11 @@ class StockLSTM(object):
         softmax_w = tf.get_variable("softmax_w", [size * num_steps, num_steps])
         softmax_b = tf.get_variable("softmax_b", [num_steps])
         logits = tf.matmul(rnn_output, softmax_w) + softmax_b
-        self._cost = cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, self._targets))
+        self._sparse_softmax_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, self._targets)
+        self._cost = tf.reduce_sum(self._sparse_softmax_cross_entropy)
 
-        self._output = logits
+        softmax_output = tf.nn.softmax(logits)
+        self._output = softmax_output
         self._final_state = states
 
         if not is_training:
@@ -41,9 +43,8 @@ class StockLSTM(object):
 
         self._lr = tf.Variable(0.0, trainable=False)
         tvars = tf.trainable_variables()
-        grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars), simulationParams.maxGradNorm)
-        # optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        optimizer = tf.train.AdamOptimizer(self.lr)
+        grads, _ = tf.clip_by_global_norm(tf.gradients(self._sparse_softmax_cross_entropy, tvars), simulationParams.maxGradNorm)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self._train_op = optimizer.apply_gradients(zip(grads, tvars))
 
     def assign_lr(self, session, lr_value):

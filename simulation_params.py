@@ -16,4 +16,4 @@ class SimulationParams:
         self.initScale = initScale
         self.priceChangeScale = priceChangeScale
         self.numPredictionDays = numPredictionDays
-        self.technicalsPerPrice = len(movingAveragePeriods) * 2 + 4 #See build_inputs._fetch_raw_input
+        self.technicalsPerPrice = len(movingAveragePeriods) * 2 + 5 #See build_inputs._fetch_raw_input
