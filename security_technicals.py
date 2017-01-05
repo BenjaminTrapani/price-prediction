@@ -1,6 +1,23 @@
 from yahoo_finance import Share
 import moving_average
+import pickle
+import os.path
 from datetime import datetime, timedelta
+
+
+def load_or_fetch_technicals(params):
+    dataFileName = '%s__%s__%s.excht' % (params.securityTicker, params.startDate, params.endDate)
+    if os.path.isfile(dataFileName):
+        p = pickle.Unpickler(open(dataFileName))
+        technicals = p.load()
+    else:
+        technicals = Technicals(params)
+        technicals.loadDataInMemory()
+        p = pickle.Pickler(open(dataFileName, mode='w'))
+        p.dump(technicals)
+
+    return technicals
+
 
 class Technicals:
     def __init__(self, simParams):

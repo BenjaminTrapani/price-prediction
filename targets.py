@@ -1,12 +1,12 @@
 import numpy as np
 
-def build_targets(num_steps, scale, technicals):
+def build_targets(num_steps, scale, daysIntoTheFuture, technicals):
     usefulClosePrices = technicals.getUsefulClosePrices()
     result = []
 
     numPositiveBuckets = num_steps/2
-    for closePriceIndex in range(1, len(usefulClosePrices)):
-        lastClosePrice = usefulClosePrices[closePriceIndex-1]
+    for closePriceIndex in range(daysIntoTheFuture, len(usefulClosePrices)):
+        lastClosePrice = usefulClosePrices[closePriceIndex - daysIntoTheFuture]
         curClosePrice = usefulClosePrices[closePriceIndex]
         priceChange = curClosePrice - lastClosePrice
         fracChange = priceChange / lastClosePrice
@@ -22,8 +22,6 @@ def build_targets(num_steps, scale, technicals):
             correctedIndex = 0
 
         result.append(correctedIndex)
-
-    result.append(num_steps // 2)
 
     return np.array(result, dtype=np.int32)
 

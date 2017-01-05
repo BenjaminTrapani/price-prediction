@@ -1,6 +1,7 @@
 class SimulationParams:
     def __init__(self, startDate, endDate, securityTicker, movingAveragePeriods, batchSize, hiddenSize,
-                 numLayers, keepProb, maxGradNorm, numEpochs, lrDecay, learningRate, initScale, priceChangeScale, numPredictionDays):
+                 numLayers, keepProb, maxGradNorm, numEpochs, lrDecay, learningRate, initScale, priceChangeScale,
+                 numPredictionDays, windowSizeInPrices, daysIntoTheFuture):
         self.startDate = startDate
         self.endDate = endDate
         self.securityTicker = securityTicker
@@ -16,4 +17,5 @@ class SimulationParams:
         self.initScale = initScale
         self.priceChangeScale = priceChangeScale
         self.numPredictionDays = numPredictionDays
-        self.technicalsPerPrice = len(movingAveragePeriods) * 2 + 5 #See build_inputs._fetch_raw_input
+        self.windowSizeInPrices = windowSizeInPrices
+        self.daysIntoTheFuture = daysIntoTheFuture
