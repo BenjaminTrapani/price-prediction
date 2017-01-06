@@ -1,4 +1,4 @@
-def shouldBuy(probabilities, buyThreshold):
+def should_buy(probabilities, buyThreshold):
     totalIndices = 0.0
     totalWeight = 0.0
 
@@ -10,14 +10,15 @@ def shouldBuy(probabilities, buyThreshold):
     averageIndex = totalIndices / totalWeight
     return averageIndex > buyThreshold
 
-def fetch_final_value(initialCash, probabilities, prices, daysIntoFuture, buyThreshold):
+
+def fetch_final_value(initialCash, probabilities, prices, window_size, daysIntoFuture, buyThreshold):
     totalYield = 0
     buyCount = 0
     for yIndex in range(len(probabilities)):
-        lastDayPrice = prices[yIndex]
-        futurePrice = prices[yIndex + daysIntoFuture]
+        lastDayPrice = prices[yIndex + window_size - 1]
+        futurePrice = prices[yIndex + daysIntoFuture + window_size - 1]
         priceChange = futurePrice - lastDayPrice
-        if shouldBuy(probabilities[yIndex], buyThreshold):
+        if should_buy(probabilities[yIndex], buyThreshold):
             print 'buy: ' + str(probabilities[yIndex]) + ', price change: ' + str(priceChange)
             priceFrac = futurePrice / lastDayPrice
             totalYield = totalYield + priceFrac
@@ -25,6 +26,10 @@ def fetch_final_value(initialCash, probabilities, prices, daysIntoFuture, buyThr
         else:
             print 'sell: ' + str(probabilities[yIndex]) + ', price change: ' + str(priceChange)
 
-    averageYield = totalYield / float(buyCount)
-    return initialCash * averageYield
+    if buyCount == 0:
+        average_yield = 1
+    else:
+        average_yield = totalYield / float(buyCount)
+
+    return initialCash * average_yield
 

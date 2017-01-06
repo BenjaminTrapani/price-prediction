@@ -1,11 +1,11 @@
 import numpy as np
 
-def build_targets(num_steps, scale, daysIntoTheFuture, technicals):
+def build_targets(num_steps, scale, daysIntoTheFuture, window_size, technicals):
     usefulClosePrices = technicals.getUsefulClosePrices()
     result = []
 
     numPositiveBuckets = num_steps/2
-    for closePriceIndex in range(daysIntoTheFuture, len(usefulClosePrices)):
+    for closePriceIndex in range(daysIntoTheFuture + window_size - 1, len(usefulClosePrices)):
         lastClosePrice = usefulClosePrices[closePriceIndex - daysIntoTheFuture]
         curClosePrice = usefulClosePrices[closePriceIndex]
         priceChange = curClosePrice - lastClosePrice

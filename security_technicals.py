@@ -6,14 +6,14 @@ from datetime import datetime, timedelta
 
 
 def load_or_fetch_technicals(params):
-    dataFileName = '%s__%s__%s.excht' % (params.securityTicker, params.startDate, params.endDate)
-    if os.path.isfile(dataFileName):
-        p = pickle.Unpickler(open(dataFileName))
+    data_file_name = '%s__%s__%s.excht' % (params.securityTicker, params.startDate, params.endDate)
+    if os.path.isfile(data_file_name):
+        p = pickle.Unpickler(open(data_file_name))
         technicals = p.load()
     else:
         technicals = Technicals(params)
         technicals.loadDataInMemory()
-        p = pickle.Pickler(open(dataFileName, mode='w'))
+        p = pickle.Pickler(open(data_file_name, mode='w'))
         p.dump(technicals)
 
     return technicals
@@ -26,9 +26,9 @@ class Technicals:
         self.movingAveragePeriods = simParams.movingAveragePeriods
 
     def loadDataInMemory(self):
-        startDateDatetime = datetime.strptime(self.simParams.startDate, "%Y-%m-%d")
+        start_date_datetime = datetime.strptime(self.simParams.startDate, "%Y-%m-%d")
         self.maxMovingAveragePeriod = max(self.movingAveragePeriods)
-        adjustedStartDate = startDateDatetime - timedelta(days=self.maxMovingAveragePeriod)
+        adjustedStartDate = start_date_datetime - timedelta(days=self.maxMovingAveragePeriod)
         adjustedStartDateStr = adjustedStartDate.strftime("%Y-%m-%d")
         self.cachedData = self.security.get_historical(adjustedStartDateStr, self.simParams.endDate)
 

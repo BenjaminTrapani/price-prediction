@@ -67,7 +67,8 @@ def get_inputs_targets_epochsize_numsteps(technicals, simulationParams):
         return data
 
     target_array = targets.build_targets(num_steps, simulationParams.priceChangeScale,
-                                        simulationParams.daysIntoTheFuture, technicals)
+                                         simulationParams.daysIntoTheFuture, simulationParams.windowSizeInPrices,
+                                         technicals)
     batched_targets = batch_data(target_array, 1)
 
     reshaped_input = input_data.reshape([-1])
@@ -76,23 +77,41 @@ def get_inputs_targets_epochsize_numsteps(technicals, simulationParams):
     return batched_input, batched_targets, epoch_size, num_steps, batch_size
 
 
+def check_inputs_targets(inputs, target_chunk, offset, num_steps, days_into_future, close_prices, window_size):
+    print '---'
+    for index, input in enumerate(inputs):
+        if index is not 0:
+            return
+        target = target_chunk[index]
+        initial_price = input[len(input) - 8]
+        expected_final_price = (target * 2.0 / num_steps) * initial_price
+        actual_final_price = close_prices[offset + days_into_future + window_size - 1] #close price index incorrect, fix.
+        tolerated_diff = (initial_price / num_steps) * 2.0
+        if abs(expected_final_price - actual_final_price) > tolerated_diff:
+            print 'expected final price %f to be within %f of actual %f' % (expected_final_price, tolerated_diff,
+                                                                            actual_final_price)
+
+
 #returns two iterators: input, target
 def get_iterators(technicals, simulationParams):
     input_data, batched_targets, epoch_size, num_steps, _ = get_inputs_targets_epochsize_numsteps(technicals, simulationParams)
 
     advance_per_chunk = num_steps / simulationParams.windowSizeInPrices
-    curIndex = 0
+    cur_index = 0
 
     for i in range(epoch_size):
-        x_begin_index = curIndex
+        x_begin_index = cur_index
         x_end_index = x_begin_index + num_steps
         inputs = input_data[:, x_begin_index:x_end_index]
         target_chunk = batched_targets[:, i]
 
-        print 'epoch %d' % i
-        print 'inputs ' + str(inputs)
-        print 'outputs ' + str(target_chunk)
+        check_inputs_targets(inputs, target_chunk, i, num_steps, simulationParams.daysIntoTheFuture,
+                             technicals.getUsefulClosePrices(), simulationParams.windowSizeInPrices)
 
-        curIndex += advance_per_chunk
+        #print 'epoch %d' % i
+        #print 'inputs ' + str(inputs)
+        #print 'outputs ' + str(target_chunk)
+
+        cur_index += advance_per_chunk
 
         yield (inputs, target_chunk)
